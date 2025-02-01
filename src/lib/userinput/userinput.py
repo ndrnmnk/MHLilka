@@ -15,7 +15,7 @@ import machine
 from . import _keys
 
 # mh_if touchscreen:
-from . import _touch
+#from . import _touch
 # mh_end_if
 
 
@@ -83,14 +83,14 @@ class UserInput(_keys.Keys):
 
         # mh_if kb_light:
         # keyboard backlight control!
-        self.set_backlight(self.config["kb_light"])
+        #self.set_backlight(self.config["kb_light"])
         # mh_end_if
 
         # mh_if touchscreen:
         # setup touch control!
-        self.touch = _touch.Touch(i2c=self.i2c)
-        self.get_touch_events = self.touch.get_touch_events
-        self.get_current_points = self.touch.get_current_points
+        #self.touch = _touch.Touch(i2c=self.i2c)
+        #self.get_touch_events = self.touch.get_touch_events
+        #self.get_current_points = self.touch.get_current_points
         # mh_end_if
 
 
@@ -264,10 +264,10 @@ class UserInput(_keys.Keys):
                 machine.reset()
 
             # mh_if kb_light:
-            if "b" in keylist:
-                self.config["kb_light"] = not self.config["kb_light"]
-                self.set_backlight(self.config["kb_light"])
-                keylist.remove('b')
+            #if "b" in keylist:
+                #self.config["kb_light"] = not self.config["kb_light"]
+                #self.set_backlight(self.config["kb_light"])
+                #keylist.remove('b')
             # mh_end_if
 
 
@@ -296,4 +296,5 @@ class UserInput(_keys.Keys):
 
             display.text(key_txt, x, _PADDING + 2, display.palette[txt_clr])
             width = x - _RADIUS - _PADDING
+
 
