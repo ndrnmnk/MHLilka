@@ -6,19 +6,19 @@ from . import st7789
 
 
 # ~~~~~ Magic constants:
-_MH_DISPLAY_HEIGHT = const(135)
-_MH_DISPLAY_WIDTH = const(240)
+_MH_DISPLAY_HEIGHT = const(240)
+_MH_DISPLAY_WIDTH = const(320)
 
 _MH_DISPLAY_SPI_ID = const(1)
 _MH_DISPLAY_BAUDRATE = const(40_000_000)
-_MH_DISPLAY_SCK = const(36)
-_MH_DISPLAY_MOSI = const(35)
-_MH_DISPLAY_MISO = const(None)
-_MH_DISPLAY_RESET = const(33)
-_MH_DISPLAY_CS = const(37)
-_MH_DISPLAY_DC = const(34)
-_MH_DISPLAY_BACKLIGHT = const(38)
-_MH_DISPLAY_ROTATION = const(1)
+_MH_DISPLAY_SCK = const(18)
+_MH_DISPLAY_MOSI = const(17)
+_MH_DISPLAY_MISO = const(8)
+_MH_DISPLAY_RESET = const(None)
+_MH_DISPLAY_CS = const(7)
+_MH_DISPLAY_DC = const(15)
+_MH_DISPLAY_BACKLIGHT = const(46)
+_MH_DISPLAY_ROTATION = const(3)
 
 
 class Display(st7789.ST7789):
@@ -27,9 +27,6 @@ class Display(st7789.ST7789):
     Subclasses the device-specific display driver.
     """
 
-    # Set to True to redraw all overlays next time show is called
-    draw_overlays = False
-    # A public list of overlay functions, to be called in order.
     overlay_callbacks = []
 
     def __new__(cls, **kwargs):  # noqa: ARG003, D102
@@ -70,7 +67,6 @@ class Display(st7789.ST7789):
             use_tiny_buf=use_tiny_buf,
             **kwargs,
             )
-        Display.draw_overlays = True  # Draw all overlays once on the first show()
 
 
     @staticmethod
@@ -89,7 +85,6 @@ class Display(st7789.ST7789):
 
     def show(self):
         """Write changes to display."""
-        if Display.draw_overlays:
-            self._draw_overlays()
-            Display.draw_overlays = False
+        self._draw_overlays()
         super().show()
+
