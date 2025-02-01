@@ -42,18 +42,18 @@ import network
 import ntptime
 
 from font import vga2_16x32 as font
-from launcher.icons import appicons
+from launcher.icons import appicons, battery
 from lib import battlevel, display, sdcard, userinput
 from lib.display.rawbitmap import RawBitmap
-from lib.hydra import beeper, loader, statusbar
+from lib.hydra import loader, #beeper
 from lib.hydra.config import Config
 from lib.hydra.i18n import I18n
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ _CONSTANTS: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-_MH_DISPLAY_WIDTH = const(240)
-_MH_DISPLAY_HEIGHT = const(135)
-_MH_DISPLAY_BACKLIGHT = const(38)
+_MH_DISPLAY_WIDTH = const(320)
+_MH_DISPLAY_HEIGHT = const(240)
+_MH_DISPLAY_BACKLIGHT = const(46)
 
 _DISPLAY_WIDTH_HALF = const(_MH_DISPLAY_WIDTH//2)
 
@@ -134,13 +134,13 @@ DISPLAY = display.Display(
     # mh_end_if
     )
 
-BEEP = beeper.Beeper()
+#BEEP = #BEEPer.#BEEPer()
 CONFIG = Config()
 KB = userinput.UserInput()
-STATUSBAR = statusbar.StatusBar()
 
 SD = sdcard.SDCard()
 RTC = machine.RTC()
+BATT = battlevel.Battery()
 
 I18N = I18n(_TRANS)
 
@@ -152,6 +152,7 @@ APP_NAMES = None
 APP_PATHS = None
 APP_SELECTOR_INDEX = 0
 PREV_SELECTOR_INDEX = 0
+LASTDRAWN_MINUTE = -1
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -310,9 +311,94 @@ def ease_out_cubic(x: float) -> float:
     return 1 - ((1 - x) ** 3)
 
 
+def time_24_to_12(hour_24: int, minute: int) -> tuple[str, str]:
+    """Convert the given 24 hour time to 12 hour."""
+    ampm = 'am'
+    if hour_24 >= 12:
+        ampm = 'pm'
+
+    hour_12 = hour_24 % 12
+    if hour_12 == 0:
+        hour_12 = 12
+
+    time_string = f"{hour_12}:{minute:02d}"
+    return time_string, ampm
+
+
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Graphics Functions: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+_CLOCK_X = const(6)
+_CLOCK_Y = const((_STATUSBAR_HEIGHT - _SMALL_FONT_HEIGHT) // 2)
+_CLOCK_AMPM_Y = const(_CLOCK_Y - 1)
+_CLOCK_AMPM_PADDING = const(2)
+_CLOCK_AMPM_X_OFFSET = const(_CLOCK_AMPM_PADDING + _CLOCK_X)
+
+_BATTERY_HEIGHT = const(10)
+_BATTERY_X = const(_MH_DISPLAY_WIDTH - 28)
+_BATTERY_Y = const((_STATUSBAR_HEIGHT - 10) // 2)
+
+
+def draw_statusbar():
+    """Draw the top status bar."""
+    global LASTDRAWN_MINUTE  # noqa: PLW0603
+    # erase status bar
+    DISPLAY.fill_rect(
+        0,
+        _BATTERY_Y,
+        _MH_DISPLAY_WIDTH,
+        _BATTERY_HEIGHT,
+        CONFIG.palette[4],
+        )
+
+    # clock
+    _, _, _, hour_24, minute, _, _, _ = time.localtime()
+
+    if CONFIG['24h_clock']:
+        formatted_time = f"{hour_24}:{minute:02d}"
+    else:
+        formatted_time, ampm = time_24_to_12(hour_24, minute)
+        DISPLAY.text(
+            ampm,
+            _CLOCK_AMPM_X_OFFSET
+            + (len(formatted_time)
+               * _SMALL_FONT_WIDTH),
+            _CLOCK_AMPM_Y + 1,
+            CONFIG.palette[5],
+            )
+        DISPLAY.text(
+            ampm,
+            _CLOCK_AMPM_X_OFFSET
+            + (len(formatted_time)
+                * _SMALL_FONT_WIDTH),
+            _CLOCK_AMPM_Y,
+            CONFIG.palette[2],
+            )
+
+    DISPLAY.text(
+        formatted_time,
+        _CLOCK_X, _CLOCK_Y+1,
+        CONFIG.palette[2],
+        )
+    DISPLAY.text(
+        formatted_time,
+        _CLOCK_X, _CLOCK_Y,
+        CONFIG.palette[7],
+        )
+
+    LASTDRAWN_MINUTE = minute
+
+    # battery
+    batt_lvl = BATT.read_level()
+    DISPLAY.bitmap(
+        battery,
+        _BATTERY_X,
+        _BATTERY_Y,
+        index=batt_lvl,
+        palette=[CONFIG.palette[4], CONFIG.palette[7]],
+        )
+
 
 _MIN_SCROLLBAR_WIDTH = const(20)
 _SCROLLBAR_PADDING = const(6)
@@ -629,8 +715,7 @@ def try_sync_clock():
             RTC.datetime(tuple(time_list))
             print(
                 f'RTC successfully synced to {RTC.datetime()} with {SYNC_NTP_ATTEMPTS} attempts.')
-            # Redraw statusbar
-            display.Display.draw_overlays = True
+            draw_statusbar()
 
         elif SYNC_NTP_ATTEMPTS >= _MAX_NTP_ATTEMPTS:
             NIC.disconnect()
@@ -680,14 +765,13 @@ def main_loop():
     new_keys = []
 
     # starupp sound
-    BEEP.play(
-        ('C3',
-            ('C4', 'E4', 'G4'),
-            ('C4', 'E4', 'G4'),
-         ))
+    #BEEP.play(('C3', ('C4', 'E4', 'G4'), ('C4', 'E4', 'G4'), ))
 
     # init diplsay
     DISPLAY.fill(CONFIG.palette[2])
+    DISPLAY.fill_rect(0, 0, _MH_DISPLAY_WIDTH,
+                      _STATUSBAR_HEIGHT, CONFIG.palette[4])
+    DISPLAY.hline(0, _STATUSBAR_HEIGHT, _MH_DISPLAY_WIDTH, CONFIG.palette[1])
 
     icon = IconWidget()
     icon.draw()
@@ -724,7 +808,7 @@ def main_loop():
                 # animation:
                 icon.start_scroll(1)
 
-                BEEP.play((("D3", 'F3'), "A3"), 20)
+                #BEEP.play((("D3", 'F3'), "A3"), 20)
 
             elif "LEFT" in new_keys:  # left arrow
                 PREV_SELECTOR_INDEX = APP_SELECTOR_INDEX
@@ -733,7 +817,7 @@ def main_loop():
                 # animation:
                 icon.start_scroll(-1)
 
-                BEEP.play((("C3", "E3"), "G3"), 20)
+                #BEEP.play((("C3", "E3"), "G3"), 20)
 
             # ~~~~~~~~~~ check if GO or ENTER are pressed ~~~~~~~~~~
             if "G0" in new_keys or "ENT" in new_keys:
@@ -742,11 +826,10 @@ def main_loop():
                 if APP_NAMES[APP_SELECTOR_INDEX] == "UI Sound":
                     CONFIG['ui_sound'] = not CONFIG['ui_sound']
                     icon.force_update()
-                    icon.draw()
 
                     if CONFIG['ui_sound'] == 0:  # currently muted, then unmute
-                        BEEP.play(
-                            ("C3", "E3", "G3", ("C4", "E4", "G4"), ("C4", "E4", "G4")), 80)
+                        print()
+                        #BEEP.play(("C3", "E3", "G3", ("C4", "E4", "G4"), ("C4", "E4", "G4")), 80)
 
 
                 elif APP_NAMES[APP_SELECTOR_INDEX] == "Reload Apps":
@@ -754,7 +837,7 @@ def main_loop():
                     APP_SELECTOR_INDEX = 0
                     icon.start_scroll(-1)
 
-                    BEEP.play(('C4', 'E4', 'G4'), 80)
+                    #BEEP.play(('C4', 'E4', 'G4'), 80)
 
                 else:  # ~~~~~~~~~~~~~~~~~~~ LAUNCH THE APP! ~~~~~~~~~~~~~~~~~~~~
 
@@ -773,7 +856,7 @@ def main_loop():
                         except:
                             print("Tried to deinit SDCard, but failed.")
 
-                    BEEP.play(('C4', 'B4', 'C5', 'C5'), 100)
+                    #BEEP.play(('C4', 'B4', 'C5', 'C5'), 100)
 
                     launch_app(APP_PATHS[APP_NAMES[APP_SELECTOR_INDEX]])
 
@@ -799,13 +882,16 @@ def main_loop():
                                 PREV_SELECTOR_INDEX = APP_SELECTOR_INDEX
                                 APP_SELECTOR_INDEX = idx
                                 icon.start_scroll(direction)
-                                BEEP.play(("G3"), 100)
+                                #BEEP.play(("G3"), 100)
 
                                 break
 
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Main Graphics: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
         # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+        if time.localtime()[4] != LASTDRAWN_MINUTE:
+            draw_statusbar()
 
         draw_app_selector(icon)
         DISPLAY.show()
