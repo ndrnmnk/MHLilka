@@ -13,17 +13,12 @@
   &nbsp;&nbsp;
     <a href="https://github.com/echo-lalia/Cardputer-MicroHydra" alt="Likes">
         <img src="https://img.shields.io/github/stars/echo-lalia/Cardputer-MicroHydra?style=flat&labelColor=47102a&color=8d1f52" /></a>
-  &nbsp;&nbsp;
-    <a href="https://discord.gg/6e4KUDpgQC" alt="Discord">
-        <img src="https://img.shields.io/discord/1279691612099973151?logo=discord&logoColor=c86744&label=Discord&labelColor=300f2d&color=621e5a" /></a>
-  &nbsp;&nbsp;
-    <a href="https://ko-fi.com/ethanlacasse" alt="KoFi">
-        <img src="https://img.shields.io/badge/Support_MicroHydra-4c1b52?logo=kofi&logoColor=b63532" /></a>
 </p>
 
 
 # MicroHydra
 MicroHydra is a simple MicroPython based app launcher with some OS-like features.
+# This fork is a port to LILKA v2. It probably won't work on Cardputer anymore.
 
 <p align="center">
   <img src="https://github.com/echo-lalia/Cardputer-MicroHydra/assets/108598670/15b78e4b-64fc-433a-86d3-979362abd9ab" alt="Microhydra Banner"/>
