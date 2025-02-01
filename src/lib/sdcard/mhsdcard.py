@@ -10,10 +10,10 @@ import os
 
 
 _MH_SDCARD_SLOT = const(1)
-_MH_SDCARD_SCK = const(40)
-_MH_SDCARD_MISO = const(38)
-_MH_SDCARD_MOSI = const(41)
-_MH_SDCARD_CS = const(39)
+_MH_SDCARD_SCK = const(18)
+_MH_SDCARD_MISO = const(8)
+_MH_SDCARD_MOSI = const(17)
+_MH_SDCARD_CS = const(16)
 
 
 
