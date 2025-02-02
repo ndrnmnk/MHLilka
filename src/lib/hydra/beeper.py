@@ -1,4 +1,6 @@
 import machine
+from .config import Config
+from .utils import get_instance
 
 # Standard note-to-frequency mapping (in Hz).
 NOTE_FREQUENCIES = {
@@ -53,6 +55,7 @@ class Beeper:
 
     def __init__(self):
         self.timer = None
+        self.config = get_instance(Config)
         self.freq_list = []  # List of note frequencies to play
         self.note_index = 0  # Index for the current note
 
@@ -76,6 +79,8 @@ class Beeper:
         'time_ms' is the duration for each note/chord.
         'volume' is an integer (0-10) where 10 is the loudest.
         """
+        if not self.config['ui_sound']:
+            return
         # Process the notes into a list of frequencies.
         self.freq_list = process_notes(notes)
         self.note_time_ms = time_ms
