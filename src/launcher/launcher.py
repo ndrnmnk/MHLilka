@@ -45,7 +45,7 @@ from font import vga2_16x32 as font
 from launcher.icons import appicons, battery
 from lib import battlevel, display, sdcard, userinput
 from lib.display.rawbitmap import RawBitmap
-from lib.hydra import loader, #beeper
+from lib.hydra import loader, beeper
 from lib.hydra.config import Config
 from lib.hydra.i18n import I18n
 
@@ -134,7 +134,7 @@ DISPLAY = display.Display(
     # mh_end_if
     )
 
-#BEEP = #BEEPer.#BEEPer()
+BEEP = beeper.Beeper()
 CONFIG = Config()
 KB = userinput.UserInput()
 
@@ -765,7 +765,7 @@ def main_loop():
     new_keys = []
 
     # starupp sound
-    #BEEP.play(('C3', ('C4', 'E4', 'G4'), ('C4', 'E4', 'G4'), ))
+    BEEP.play(('C3', ('C4', 'E4', 'G4'), ('C4', 'E4', 'G4'), ))
 
     # init diplsay
     DISPLAY.fill(CONFIG.palette[2])
@@ -808,7 +808,7 @@ def main_loop():
                 # animation:
                 icon.start_scroll(1)
 
-                #BEEP.play((("D3", 'F3'), "A3"), 20)
+                BEEP.play((("D3", 'F3'), "A3"), 20)
 
             elif "LEFT" in new_keys:  # left arrow
                 PREV_SELECTOR_INDEX = APP_SELECTOR_INDEX
@@ -817,7 +817,7 @@ def main_loop():
                 # animation:
                 icon.start_scroll(-1)
 
-                #BEEP.play((("C3", "E3"), "G3"), 20)
+                BEEP.play((("C3", "E3"), "G3"), 20)
 
             # ~~~~~~~~~~ check if GO or ENTER are pressed ~~~~~~~~~~
             if "G0" in new_keys or "ENT" in new_keys:
@@ -829,7 +829,7 @@ def main_loop():
 
                     if CONFIG['ui_sound'] == 0:  # currently muted, then unmute
                         print()
-                        #BEEP.play(("C3", "E3", "G3", ("C4", "E4", "G4"), ("C4", "E4", "G4")), 80)
+                        BEEP.play(("C3", "E3", "G3", ("C4", "E4", "G4"), ("C4", "E4", "G4")), 80)
 
 
                 elif APP_NAMES[APP_SELECTOR_INDEX] == "Reload Apps":
@@ -837,7 +837,7 @@ def main_loop():
                     APP_SELECTOR_INDEX = 0
                     icon.start_scroll(-1)
 
-                    #BEEP.play(('C4', 'E4', 'G4'), 80)
+                    BEEP.play(('C4', 'E4', 'G4'), 80)
 
                 else:  # ~~~~~~~~~~~~~~~~~~~ LAUNCH THE APP! ~~~~~~~~~~~~~~~~~~~~
 
@@ -856,7 +856,7 @@ def main_loop():
                         except:
                             print("Tried to deinit SDCard, but failed.")
 
-                    #BEEP.play(('C4', 'B4', 'C5', 'C5'), 100)
+                    BEEP.play(('C4', 'B4', 'C5', 'C5'), 100)
 
                     launch_app(APP_PATHS[APP_NAMES[APP_SELECTOR_INDEX]])
 
@@ -882,7 +882,7 @@ def main_loop():
                                 PREV_SELECTOR_INDEX = APP_SELECTOR_INDEX
                                 APP_SELECTOR_INDEX = idx
                                 icon.start_scroll(direction)
-                                #BEEP.play(("G3"), 100)
+                                BEEP.play(("G3"), 100)
 
                                 break
 
