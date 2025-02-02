@@ -1,142 +1,94 @@
-"""This module wraps lib/audio with a simple API for making square wave beeps.
+import machine
 
-Known issue:
-  The audio produced in this version of beeper.py is much higher quality than
-  it was in previous versions (thanks to the precision of mavica's I2SSound module),
-  but there is a noticeable delay due to the somewhat infrequent updating of the I2S IRQ.
-  At the time of writing I am not sure how I might fix that.
+# Standard note-to-frequency mapping (in Hz).
+NOTE_FREQUENCIES = {
+    'F5': 2988, 'F4': 1766, 'G#3': 1269, 'D3': 1056, 'G#4': 1997,
+    'D5': 2599, 'D4': 1570, 'G3': 1231, 'A3': 1315, 'G#5': 3450,
+    'B5': 4000, 'A#5': 3807, 'G4': 1917, 'A#3': 1360, 'A#4': 2176,
+    'D#3': 1087, 'B4': 2270, 'B3': 1406, 'G5': 3285, 'E3': 1119,
+    'D#4': 1633, 'D#5': 2722, 'E4': 1696, 'C#4': 1514, 'E5': 2851,
+    'C4': 1458, 'C5': 2375, 'C#5': 2484, 'C#3': 1028, 'F3': 1154,
+    'F#3': 1192, 'F#4': 1836, 'C3': 1000, 'F#5': 3131, 'A5': 3625,
+    'A4': 2085
+}
 
-  I have already tried:
-  - Instantly calling the IRQ handler function after playing a sound. This does make the
-    sound happen faster, but also makes the timing very inconsistent and strange sounding.
-  - Calling the IRQ handler AND setting a timer to stop the audio, but this sounds horrible
-    when multiple sounds happen rapidly.
-  - Unregistering/reregistering the IRQ function with I2S. This seems to cause a silent
-    crash of MicroPython for some reason.
-"""
-
-from machine import Timer
-
-from lib.audio import Audio
-from .config import Config
-from .utils import get_instance
-
-
-_SQUARE = const(\
-    b'\x00\x80\x00\x80\x00\x80\x00\x80\x00\x80\x00\x80'
-    b'\x00\x80\x00\x80\x00\x80\x00\x80\x00\x80\x00\x80'
-    b'\x00\x80\x00\x80\x00\x80\x00\x80\x00\x80\x00\x80'
-    b'\x00\x80\x00\x80\xFF\x7F\xFF\x7F\xFF\x7F\xFF\x7F'
-    b'\xFF\x7F\xFF\x7F\xFF\x7F\xFF\x7F\xFF\x7F\xFF\x7F'
-    b'\xFF\x7F\xFF\x7F\xFF\x7F\xFF\x7F\xFF\x7F\xFF\x7F'
-    b'\xFF\x7F\xFF\x7F\xFF\x7F\xFF\x7F\xFF\x7F\x00\x80'
-)
-SQUARE = memoryview(_SQUARE)
-
-
-
-def note_to_int(note:str) -> int:
-    """Convert a note string into an integer for I2SSound.
-
-    Note should be a string containing:
-    - A letter from A-G,
-    - Optionally, a 'S' or '#' selecting a 'sharp' note,
-    - An octave (as an integer).
-
-    Examples: 'C4', 'CS5', 'G3'
+def note_to_frequency(note):
     """
-    note = note.upper()
+    Convert a note (string) to its frequency (in Hz).
+    Returns 0 if the note is not found.
+    """
+    return NOTE_FREQUENCIES.get(note.upper(), 0)
 
-    # Extract the pitch and the octave from the note string
-    pitch = note[0]
-    octave = int(note[-1])
-
-    # Define the base values for each pitch
-    base_values = {'C': 0, 'D': 2, 'E': 4, 'F': 5, 'G': 7, 'A': 9, 'B': 11}
-
-    # Calculate the base value for the note
-    value = base_values[pitch]
-
-    # Adjust for sharps
-    if 'S' in note \
-    or '#' in note:
-        value += 1
-
-    # Calculate the final integer value
-    # C4 is the reference point with a value of 0
-    return value + (octave - 4) * 12
-
-
+def process_notes(notes):
+    """
+    Given a beeper-style notes argument, which can be a tuple of note strings or nested tuples
+    (for chords), convert it into a list of frequencies.
+    
+    For chords (tuples of multiple notes), the function computes the average frequency.
+    """
+    frequencies = []
+    
+    # Ensure notes is iterable.
+    if not isinstance(notes, (list, tuple)):
+        notes = [notes]
+    
+    for item in notes:
+        if isinstance(item, (list, tuple)):
+            # Process chord: compute the average mapped frequency.
+            chord_freqs = [note_to_frequency(n) for n in item if isinstance(n, str)]
+            if chord_freqs:
+                avg_freq = sum(chord_freqs) // len(chord_freqs)
+                frequencies.append(avg_freq)
+            else:
+                frequencies.append(0)
+        elif isinstance(item, str):
+            frequencies.append(note_to_frequency(item))
+        else:
+            frequencies.append(0)
+    return frequencies
 
 
 class Beeper:
-    """A class for playing simple UI beeps."""
+    """A class for playing simple UI beeps via a PWM buzzer on a fixed pin using a Timer."""
 
     def __init__(self):
-        """Initialize the Beeper (and I2SSound)."""
-        self.audio = get_instance(Audio)
-        self.config = get_instance(Config)
-        self.note_buf = []
-        self.timer = Timer(-1)
+        self.timer = None
+        self.freq_list = []  # List of note frequencies to play
+        self.note_index = 0  # Index for the current note
 
+    def _timer_callback(self, t):
+        # This callback runs every self.note_time_ms milliseconds
+        if self.note_index < len(self.freq_list):
+            freq = self.freq_list[self.note_index]
+            self.buzzer.freq(freq)
+            self.note_index += 1
+        else:
+            # All notes played: stop the timer and deinitialize the buzzer.
+            self.buzzer.deinit()
+            t.deinit()  # Stop the timer
+            
 
-    def stop(self):
-        """Stop all channels."""
-        for i in range(self.audio.channels):
-            self.audio.stop(channel=i)
-
-
-    def play_next(self, tim=None):  # noqa: ARG002
-        """Play the next note (on callback)."""
-        self.stop()
-
-        if not self.note_buf:
-            self.timer.deinit()
-            return
-
-        notes, volume, time_ms = self.note_buf.pop(0)
-
-        for idx, note in enumerate(notes):
-            self.audio.play(
-                sample=SQUARE,
-                note=note_to_int(note),
-                volume=volume,
-                channel=idx,
-                loop=True,
-                )
-
-        self.timer.init(mode=Timer.ONE_SHOT, period=time_ms, callback=self.play_next)
-
-
-    def play(self, notes, time_ms=100, volume=None):
-        """Play the given note.
-
-        This is the main outward-facing method of Beeper.
-        Use this to play a simple square wave over the I2C speaker.
-
-        "notes" should be:
-        - a string containing a note's name
-            notes="C4"
-        - an iterable containing a sequence of notes to play
-            notes=("C4", "C5")
-        - an iterable containing iterables, each with notes that are playes together.
-            notes=(("C4", "C5"), ("C6", "C7"))
-
-        "time_ms" is the time in milliseconds to play each note for.
-
-        "volume" is an integer between 0 and 10 (inclusive).
+    def play(self, notes, time_ms=120, volume=5):
         """
-        if not self.config['ui_sound']:
-            return
-        if volume is None:
-            volume = self.config['volume'] + 5
+        Play the given note(s) using the PWM buzzer without blocking.
+        
+        'notes' can be a single note, a list/tuple of note strings, or nested lists/tuples (for chords).
+        'time_ms' is the duration for each note/chord.
+        'volume' is an integer (0-10) where 10 is the loudest.
+        """
+        # Process the notes into a list of frequencies.
+        self.freq_list = process_notes(notes)
+        self.note_time_ms = time_ms
+        self.note_index = 0
 
-        if isinstance(notes, str):
-            notes = [notes]
+        # Set the duty cycle based on volume (duty_u16 takes values from 0 to 65535).
+        # Here, a volume of 10 corresponds to ~10% duty cycle.
+        self.buzzer = machine.PWM(machine.Pin(11))
+        self.buzzer.duty_u16(6553 * volume)
+        self.buzzer.freq(self.freq_list[0])
 
-        for note in notes:
-            if isinstance(note, str):
-                note = (note,)
-            self.note_buf.append((note, volume, time_ms))
+        # Create and start a timer that fires every time_ms milliseconds.
+        # Using id=-1 creates a virtual timer if supported.
+        self.timer = machine.Timer(-1)
+        self.timer.init(period=time_ms, mode=machine.Timer.PERIODIC, callback=self._timer_callback)
 
-        self.play_next()
