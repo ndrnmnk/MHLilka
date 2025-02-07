@@ -329,14 +329,14 @@ def time_24_to_12(hour_24: int, minute: int) -> tuple[str, str]:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Graphics Functions: ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-_CLOCK_X = const(6)
+_CLOCK_X = const(46)
 _CLOCK_Y = const((_STATUSBAR_HEIGHT - _SMALL_FONT_HEIGHT) // 2)
 _CLOCK_AMPM_Y = const(_CLOCK_Y - 1)
 _CLOCK_AMPM_PADDING = const(2)
 _CLOCK_AMPM_X_OFFSET = const(_CLOCK_AMPM_PADDING + _CLOCK_X)
 
 _BATTERY_HEIGHT = const(10)
-_BATTERY_X = const(_MH_DISPLAY_WIDTH - 28)
+_BATTERY_X = const(_MH_DISPLAY_WIDTH - 68)
 _BATTERY_Y = const((_STATUSBAR_HEIGHT - 10) // 2)
 
 
@@ -909,3 +909,4 @@ def main_loop():
 
 # run the main loop!
 main_loop()
+
