@@ -23,15 +23,18 @@ class SDCard:
     def __init__(self):
         """Initialize the SDCard."""
         # mh_if shared_sdcard_spi:
-        self.sd = _SDCard(
-            machine.SPI(
-                _MH_SDCARD_SLOT, # actually SPI id
-                sck=machine.Pin(_MH_SDCARD_SCK),
-                miso=machine.Pin(_MH_SDCARD_MISO),
-                mosi=machine.Pin(_MH_SDCARD_MOSI),
-            ),
-            cs=machine.Pin(_MH_SDCARD_CS),
-        )
+        try:
+            self.sd = _SDCard(
+                machine.SPI(
+                    _MH_SDCARD_SLOT, # actually SPI id
+                    sck=machine.Pin(_MH_SDCARD_SCK),
+                    miso=machine.Pin(_MH_SDCARD_MISO),
+                    mosi=machine.Pin(_MH_SDCARD_MOSI),
+                ),
+                cs=machine.Pin(_MH_SDCARD_CS),
+            )
+        except (OSError, NameError, AttributeError) as e:
+            print(f"Could not mount SDCard: {e}")
         # mh_else:
         # self.sd = machine.SDCard(
         #     slot=_MH_SDCARD_SLOT,
@@ -59,3 +62,4 @@ class SDCard:
         # mh_if not shared_sdcard_spi:
         # self.sd.deinit()
         # mh_end_if
+
