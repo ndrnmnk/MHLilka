@@ -4,7 +4,7 @@ from lib.hydra import loader
 from lib import sdcard
 import sys
 
-
+machine.PWM(machine.Pin(11)).deinit()
 # mh_if frozen:
 # _LAUNCHER = const(".frozen/launcher/launcher")
 # mh_else:
