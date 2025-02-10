@@ -23,9 +23,7 @@ def note_to_frequency(note):
 
 def process_notes(notes):
     """
-    Given a beeper-style notes argument, which can be a tuple of note strings or nested tuples
-    (for chords), convert it into a list of frequencies.
-    
+    Сonvert notes into a list of frequencies.
     For chords (tuples of multiple notes), the function computes the average frequency.
     """
     frequencies = []
@@ -51,7 +49,7 @@ def process_notes(notes):
 
 
 class Beeper:
-    """A class for playing simple UI beeps via a PWM buzzer on a fixed pin using a Timer."""
+    """A class for playing simple UI beeps via a PWM buzzer."""
 
     def __init__(self):
         self.timer = None
@@ -71,29 +69,26 @@ class Beeper:
             t.deinit()  # Stop the timer
             
 
-    def play(self, notes, time_ms=120, volume=5):
-        """
-        Play the given note(s) using the PWM buzzer without blocking.
-        
-        'notes' can be a single note, a list/tuple of note strings, or nested lists/tuples (for chords).
-        'time_ms' is the duration for each note/chord.
-        'volume' is an integer (0-10) where 10 is the loudest.
-        """
+    def play(self, notes, time_ms=120, volume=1):
         if not self.config['ui_sound']:
             return
-        # Process the notes into a list of frequencies.
         self.freq_list = process_notes(notes)
         self.note_time_ms = time_ms
         self.note_index = 0
 
-        # Set the duty cycle based on volume (duty_u16 takes values from 0 to 65535).
-        # Here, a volume of 10 corresponds to ~10% duty cycle.
+        # Create PWM on the desired pin
         self.buzzer = machine.PWM(machine.Pin(11))
+        if self.freq_list:
+            self.buzzer.freq(self.freq_list[0])
         self.buzzer.duty_u16(6553 * volume)
-        self.buzzer.freq(self.freq_list[0])
 
-        # Create and start a timer that fires every time_ms milliseconds.
-        # Using id=-1 creates a virtual timer if supported.
+        # Define the timer callback function
+        def timer_callback(timer):
+            self._timer_callback(timer)
+
+        # Start the timer for note changes
         self.timer = machine.Timer(-1)
-        self.timer.init(period=time_ms, mode=machine.Timer.PERIODIC, callback=self._timer_callback)
+        self.timer.init(period=time_ms, mode=machine.Timer.PERIODIC, callback=timer_callback)
 
+        # Immediately call the callback function to start playing the first note
+        timer_callback(self.timer)
