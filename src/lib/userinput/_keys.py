@@ -1,6 +1,8 @@
 """Read and return keyboard data for the M5Stack Cardputer."""
 
+import time
 from machine import Pin
+from .OSK import OnScreenKeyboard
 
 
 # lookup values for our keyboard
@@ -29,6 +31,7 @@ class Keys:
     aux_action = "G0"
 
     def __init__(self, **kwargs):  # noqa: ARG002
+        self.OSK = False
         self._key_list_buffer = []
 
         # setup the "G0" button!
@@ -64,14 +67,35 @@ class Keys:
         for col_idx, pin in enumerate(self.columns):
             if not pin.value():  # button pressed
                 key_list_buffer.append(KEYCODES[col_idx])
+                
+        if not self.OSK:
+            key_list_buffer = self.try_to_OSK(key_list_buffer)
         
         return key_list_buffer
 
 
     def get_pressed_keys(self, *, force_fn=False, force_shift=False) -> list:
-        """Get a readable list of currently held keys."""
-        self.scan()
-        self.key_state = [KEYMAP[keycode] for keycode in self._key_list_buffer if keycode in KEYMAP]
+        self._key_list_buffer = self.scan()
+        
+        self.key_state = []
+        for keycode in self._key_list_buffer:
+            if keycode in KEYCODES:
+                self.key_state.append(KEYMAP[keycode])
+            else:
+                self.key_state.append(keycode)
         return self.key_state
 
+
+    def try_to_OSK(self, klb):
+        if 9 in klb:
+            self.OSK = True
+            text = OnScreenKeyboard().get_text(self)
+            # Flush the key buffer by waiting until scan() returns empty:
+            while any(not pin.value() for pin in self.columns):
+                time.sleep(0.05)
+            self.OSK = False
+            return text
+        return klb
+
+            
 
